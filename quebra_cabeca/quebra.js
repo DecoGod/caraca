@@ -6,15 +6,16 @@ const messageDisplay = document.getElementById('message');
 const IMAGE_URL = './quebracabeca.jpeg'; // **Mude para o caminho da sua imagem**
 const ROWS = 3; // Número de linhas de peças
 const COLS = 3; // Número de colunas de peças
-const PUZZLE_SIZE = 450; // Tamanho total do quebra-cabeça em pixels (ex: 450x450px)
+const PUZZLE_SIZE = Math.min(screen.width, 450); // Tamanho total do quebra-cabeça em pixels (ex: 450x450px)
 
 // --- Variáveis Globais ---
 let pieces = [];
-let slots = [];
-let pieceSize = PUZZLE_SIZE / ROWS; // Tamanho de cada peça (assumindo ROWS = COLS para peças quadradas)
+let slots = []; // Slots agora são os contêineres das peças
+let pieceSize = PUZZLE_SIZE / ROWS;
 
-// Variáveis para o Drag and Drop
+// Variáveis para o Drag and Drop (agora também para toque)
 let draggedPiece = null;
+let currentDropTarget = null; // Para gerenciar o slot de destino durante o arrasto por toque
 
 // --- Funções Auxiliares ---
 
@@ -26,6 +27,46 @@ function shuffleArray(array) {
     }
 }
 
+// Função para obter coordenadas do evento (mouse ou toque)
+function getCoords(e) {
+    let clientX, clientY;
+    if (e.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+    } else if (e.changedTouches && e.changedTouches.length > 0) { // para touchend
+        clientX = e.changedTouches[0].clientX;
+        clientY = e.changedTouches[0].clientY;
+    } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+    }
+
+    const rect = puzzleContainer.getBoundingClientRect();
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    return { x, y };
+}
+
+// Função para encontrar o slot (ou peça) sob as coordenadas
+function getElementUnderPoint(x, y) {
+    // Esconde a peça arrastada temporariamente para encontrar o elemento abaixo dela
+    if (draggedPiece) draggedPiece.style.display = 'none';
+
+    const targetElement = document.elementFromPoint(x, y);
+
+    if (draggedPiece) draggedPiece.style.display = ''; // Volta a exibir a peça
+
+    // Retorna o slot mais próximo se o targetElement não for o slot diretamente
+    // ou se for a própria peça arrastada (evita auto-drop)
+    if (targetElement && targetElement.classList.contains('puzzle-slot')) {
+        return targetElement;
+    } else if (targetElement && targetElement.classList.contains('puzzle-piece')) {
+        return targetElement.parentNode; // Retorna o slot pai da peça
+    }
+    return null;
+}
+
+
 // --- Funções Principais do Jogo ---
 
 function createPuzzle() {
@@ -34,145 +75,92 @@ function createPuzzle() {
     pieces = [];
     slots = [];
     draggedPiece = null;
+    currentDropTarget = null;
 
-    // Define o tamanho das peças no CSS via variável
     puzzleContainer.style.setProperty('--piece-size', `${pieceSize}px`);
     puzzleContainer.style.gridTemplateColumns = `repeat(${COLS}, ${pieceSize}px)`;
     puzzleContainer.style.gridTemplateRows = `repeat(${ROWS}, ${pieceSize}px)`;
-    puzzleContainer.style.width = `${PUZZLE_SIZE}px`; // Define o tamanho total do contêiner
+    puzzleContainer.style.width = `${PUZZLE_SIZE}px`;
     puzzleContainer.style.height = `${PUZZLE_SIZE}px`;
 
     const img = new Image();
     img.src = IMAGE_URL;
     img.onload = () => {
-        // Crie as peças e os slots
+        const initialPieceData = [];
         for (let i = 0; i < ROWS * COLS; i++) {
             const row = Math.floor(i / COLS);
             const col = i % COLS;
 
             const piece = document.createElement('div');
             piece.classList.add('puzzle-piece');
-            piece.draggable = true; // Torna a peça arrastável
-
-            // Calcular a posição de fundo para "cortar" a parte da imagem
+            piece.draggable = true; // Mantém para mouse
+            
             const bgX = -col * pieceSize;
             const bgY = -row * pieceSize;
             piece.style.backgroundImage = `url(${IMAGE_URL})`;
             piece.style.backgroundPosition = `${bgX}px ${bgY}px`;
-            piece.style.backgroundSize = `${PUZZLE_SIZE}px ${PUZZLE_SIZE}px`; // Tamanho da imagem original no fundo
+            piece.style.backgroundSize = `${PUZZLE_SIZE}px ${PUZZLE_SIZE}px`;
 
-            piece.dataset.correctPos = i; // Armazena a posição correta da peça
+            piece.dataset.correctPos = i; // Posição correta no quebra-cabeça
+            initialPieceData.push(piece);
+        }
 
-            // Adiciona event listeners para arrastar
-            piece.addEventListener('dragstart', handleDragStart);
-            piece.addEventListener('dragend', handleDragEnd);
+        shuffleArray(initialPieceData); // Embaralha as peças
 
-            pieces.push(piece);
-
-            // Crie os slots vazios
+        // Cria os slots e os preenche com as peças embaralhadas
+        for (let i = 0; i < ROWS * COLS; i++) {
             const slot = document.createElement('div');
             slot.classList.add('puzzle-slot');
-            slot.dataset.slotPos = i; // Armazena a posição do slot
-            // Adiciona event listeners para soltar
-            slot.addEventListener('dragover', handleDragOver);
-            slot.addEventListener('drop', handleDrop);
-            slot.addEventListener('dragleave', handleDragLeave); // Para remover highlight
-            slot.addEventListener('dragenter', handleDragEnter); // Para adicionar highlight
+            slot.dataset.slotPos = i; // Posição física deste slot na grade
 
-            slots.push(slot);
-        }
-
-        // Embaralha as peças e as adiciona ao contêiner
-        shuffleArray(pieces);
-        pieces.forEach(piece => puzzleContainer.appendChild(piece));
-
-        // Inicialmente, adicione os slots para o estado inicial, ou apenas as peças embaralhadas
-        // O drag and drop vai gerenciar a troca entre peças e slots.
-        // Para este setup, a lógica inicial adiciona as peças embaralhadas.
-        // O 'drop' event listener será no slot, então precisamos que os slots estejam lá.
-        // Ou, uma abordagem comum é ter slots pré-definidos e arrastar as peças para eles.
-
-        // Vamos modificar para ter slots fixos e peças arrastáveis para eles.
-        // Remove as peças adicionadas e adiciona os slots no lugar.
-        puzzleContainer.innerHTML = ''; // Limpa de novo para adicionar os slots primeiro
-        shuffleArray(slots); // Embaralha os slots para que as peças embaralhadas caiam neles.
-                             // Na verdade, queremos slots em ordem, e as peças embaralhadas em slots em ordem.
-                             // OU: manter os slots em ordem, e embaralhar as peças que serão colocadas nesses slots.
-                             // A forma mais fácil é embaralhar as peças e colocá-las em slots em ordem.
-
-        // Reiniciando a lógica para usar slots fixos e peças flutuantes/arrastáveis
-        // Um modelo comum é ter um 'tabuleiro' de slots e um 'pool' de peças embaralhadas.
-        // Mas para drag-and-drop dentro do próprio tabuleiro:
-        // As peças precisam ser arrastadas para *outras peças* ou para *slots vazios*.
-        // A lógica do 'dragover' e 'drop' precisa ser no elemento que vai *receber* o drop.
-
-        // Implementação Simplificada: Embaralha as peças e as coloca em slots.
-        // Quando uma peça é arrastada, seu slot original fica vazio.
-        // Quando solta, ela troca de lugar com o que estava no slot de destino.
-
-        // Para simplificar, vamos criar os slots vazios e depois preenchê-los com as peças embaralhadas.
-        const combined = [...pieces]; // Copia as peças criadas
-
-        // Gera a ordem correta dos slots para o quebra-cabeça
-        // E preenche com as peças embaralhadas.
-        const initialPuzzleLayout = [];
-        for (let i = 0; i < ROWS * COLS; i++) {
-            initialPuzzleLayout.push({ type: 'piece', content: pieces[i], originalIndex: i });
-        }
-        // Embaralha a ordem inicial das peças no layout
-        shuffleArray(initialPuzzleLayout);
-
-        // Renderiza o layout inicial
-        initialPuzzleLayout.forEach((item, index) => {
-            const slot = document.createElement('div');
-            slot.classList.add('puzzle-slot'); // Todos são slots por onde peças podem passar
-            slot.dataset.currentPieceIndex = index; // Qual peça está *atualmente* neste slot
-            slot.dataset.slotPos = index; // Posição física deste slot na grade
-
-            // Adiciona a peça embaralhada dentro do slot
-            const piece = item.content; // 'content' é a div da peça
-            piece.dataset.currentSlotPos = index; // A peça também sabe onde ela está
-
+            const piece = initialPieceData[i];
+            piece.dataset.currentSlotPos = i; // A peça sabe em qual slot ela está atualmente
             slot.appendChild(piece);
 
-            // Adiciona event listeners para arrastar E para soltar nas peças
+            // Adiciona event listeners de mouse e toque para as PEÇAS
             piece.addEventListener('dragstart', handleDragStart);
             piece.addEventListener('dragend', handleDragEnd);
-            
-            // Eventos para o slot, para permitir drop
+            piece.addEventListener('touchstart', handleTouchStart, { passive: false });
+            piece.addEventListener('touchmove', handleTouchMove, { passive: false });
+            piece.addEventListener('touchend', handleTouchEnd, { passive: false });
+
+            // Adiciona event listeners de mouse para os SLOTS (para drop)
             slot.addEventListener('dragover', handleDragOver);
             slot.addEventListener('drop', handleDrop);
             slot.addEventListener('dragleave', handleDragLeave);
             slot.addEventListener('dragenter', handleDragEnter);
-
+            
+            // Adiciona os slots ao contêiner
             puzzleContainer.appendChild(slot);
-        });
-
-        checkWin(); // Verifica se o jogo já está ganho (improvável no início, mas bom para debug)
+            slots.push(slot); // Guarda referência aos slots
+        }
+        
+        checkWin(); // Verifica se o jogo já está ganho (raro no início)
     };
 }
 
 
-// --- Drag and Drop Handlers ---
+// --- Drag and Drop Handlers (Mouse) ---
 
 function handleDragStart(e) {
-    draggedPiece = this; // 'this' é a div da peça
+    draggedPiece = this;
     draggedPiece.classList.add('dragging');
     e.dataTransfer.effectAllowed = 'move';
-    // É comum usar e.dataTransfer.setData para passar dados, mas aqui usaremos a variável global
+    e.dataTransfer.setData('text/plain', ''); // Necessário para Firefox
 }
 
 function handleDragEnd(e) {
-    draggedPiece.classList.remove('dragging');
-    draggedPiece = null;
-    // Remover classes de highlight de todos os slots após o dragend
+    if (draggedPiece) {
+        draggedPiece.classList.remove('dragging');
+        draggedPiece = null;
+    }
     document.querySelectorAll('.puzzle-slot').forEach(slot => {
         slot.classList.remove('drag-over');
     });
 }
 
 function handleDragOver(e) {
-    e.preventDefault(); // Necessário para permitir o drop
+    e.preventDefault();
     e.dataTransfer.dropEffect = 'move';
 }
 
@@ -192,35 +180,120 @@ function handleDragLeave(e) {
 function handleDrop(e) {
     e.preventDefault();
     const targetSlot = this; // O slot onde a peça foi solta
-
-    targetSlot.classList.remove('drag-over'); // Remove highlight
-
-    if (draggedPiece) {
-        // O slot de origem da peça arrastada
+    
+    targetSlot.classList.remove('drag-over');
+    
+    if (draggedPiece && draggedPiece.parentNode !== targetSlot) {
         const sourceSlot = draggedPiece.parentNode;
-
-        // Troca as peças de lugar no DOM
-        if (sourceSlot !== targetSlot) {
-            const targetPiece = targetSlot.querySelector('.puzzle-piece');
-
-            // Remove a peça arrastada do slot de origem
-            sourceSlot.removeChild(draggedPiece);
-
-            // Se o slot de destino tinha uma peça, move-a para o slot de origem
-            if (targetPiece) {
-                targetSlot.removeChild(targetPiece); // Remove do destino
-                sourceSlot.appendChild(targetPiece); // Adiciona ao origem
-                targetPiece.dataset.currentSlotPos = sourceSlot.dataset.slotPos; // Atualiza a posição da peça movida
-            }
-            
-            // Coloca a peça arrastada no slot de destino
-            targetSlot.appendChild(draggedPiece);
-            draggedPiece.dataset.currentSlotPos = targetSlot.dataset.slotPos; // Atualiza a posição da peça arrastada
-
-            checkWin(); // Verifica se o quebra-cabeça foi montado
+        const targetPiece = targetSlot.querySelector('.puzzle-piece');
+        
+        // Realiza a troca visual no DOM
+        if (targetPiece) { // Se o slot de destino tinha uma peça
+            sourceSlot.appendChild(targetPiece);
+            targetPiece.dataset.currentSlotPos = sourceSlot.dataset.slotPos;
+        } else { // Se o slot de destino estava vazio (o que não deve acontecer no nosso setup, mas é bom ter)
+            sourceSlot.innerHTML = ''; // Limpa o slot de origem
         }
+        
+        targetSlot.appendChild(draggedPiece);
+        draggedPiece.dataset.currentSlotPos = targetSlot.dataset.slotPos;
+        
+        checkWin();
+    }
+
+    draggedPiece.classList.remove('dragging');
+    draggedPiece = null; // Limpa a peça arrastada após o drop
+}
+
+
+// --- Touch Handlers ---
+
+function handleTouchStart(e) {
+    e.preventDefault(); // Previne rolagem/zoom padrão
+    draggedPiece = this; // 'this' é a peça tocada
+    draggedPiece.classList.add('dragging');
+
+    // Mover a peça para o topo do Z-index para que ela apareça sobre as outras
+    draggedPiece.style.position = 'absolute'; // ou 'fixed' se quiser que ela siga o dedo na tela inteira
+    draggedPiece.style.zIndex = '1000';
+
+    // Posiciona a peça diretamente sob o dedo
+    const coords = getCoords(e);
+    // Ajuste para centralizar a peça no dedo (opcional, mas melhora a UX)
+    draggedPiece.style.left = `${coords.x - pieceSize / 2}px`;
+    draggedPiece.style.top = `${coords.y - pieceSize / 2}px`;
+
+    // Adiciona a peça diretamente ao body ou ao puzzleContainer para que possa ser movida livremente
+    // Vamos adicionar ao body para que o movimento seja "global" e não restrito ao puzzleContainer
+    document.body.appendChild(draggedPiece);
+}
+
+function handleTouchMove(e) {
+    e.preventDefault(); // Previne rolagem/zoom padrão
+    if (!draggedPiece) return;
+    
+    const coords = getCoords(e);
+    draggedPiece.style.left = `${coords.x - pieceSize / 2}px`;
+    draggedPiece.style.top = `${coords.y - pieceSize / 2}px`;
+
+    // Lógica para highlight do alvo de drop
+    const targetElement = getElementUnderPoint(e.touches[0].clientX, e.touches[0].clientY);
+
+    // Remove highlight do alvo anterior se houver
+    if (currentDropTarget && currentDropTarget !== targetElement) {
+        currentDropTarget.classList.remove('drag-over');
+    }
+
+    // Adiciona highlight ao novo alvo
+    if (targetElement && targetElement !== draggedPiece.parentNode) { // Não realçar o próprio slot de origem
+        targetElement.classList.add('drag-over');
+        currentDropTarget = targetElement;
+    } else {
+        currentDropTarget = null;
     }
 }
+
+function handleTouchEnd(e) {
+    e.preventDefault(); // Previne rolagem/zoom padrão
+    if (!draggedPiece) return;
+
+    // Remove a peça do fluxo normal e volta ela para o puzzleContainer
+    draggedPiece.style.position = '';
+    draggedPiece.style.zIndex = '';
+    draggedPiece.classList.remove('dragging');
+
+    const coords = getCoords(e);
+    const targetSlot = getElementUnderPoint(e.changedTouches[0].clientX, e.changedTouches[0].clientY);
+
+    // Se houver um slot válido para soltar (e não é o slot original da peça arrastada)
+    if (targetSlot && draggedPiece.dataset.currentSlotPos !== targetSlot.dataset.slotPos) {
+        const sourceSlot = document.querySelector(`.puzzle-slot[data-slot-pos="${draggedPiece.dataset.currentSlotPos}"]`);
+        const targetPiece = targetSlot.querySelector('.puzzle-piece');
+
+        // Lógica de troca de peças
+        if (targetPiece) { // Se o slot de destino tinha uma peça
+            sourceSlot.appendChild(targetPiece);
+            targetPiece.dataset.currentSlotPos = sourceSlot.dataset.slotPos;
+        } else { // Se o slot de destino estava vazio (neste jogo, sempre terá uma peça, então este else é redundante)
+            sourceSlot.innerHTML = '';
+        }
+        
+        targetSlot.appendChild(draggedPiece);
+        draggedPiece.dataset.currentSlotPos = targetSlot.dataset.slotPos;
+    } else {
+        // Se soltou em um lugar inválido ou no mesmo slot, volta a peça para seu slot original
+        const sourceSlot = document.querySelector(`.puzzle-slot[data-slot-pos="${draggedPiece.dataset.currentSlotPos}"]`);
+        sourceSlot.appendChild(draggedPiece); // Volta a peça para onde ela estava
+    }
+
+    // Limpa highlights e variáveis de arrasto
+    document.querySelectorAll('.puzzle-slot').forEach(slot => slot.classList.remove('drag-over'));
+    draggedPiece = null;
+    currentDropTarget = null;
+
+    checkWin();
+}
+
 
 // --- Verificação de Vitória ---
 
@@ -242,14 +315,22 @@ function checkWin() {
 
     if (correctCount === ROWS * COLS) {
         messageDisplay.textContent = 'Quebra-cabeça Montado! Parabéns!';
-        puzzleContainer.classList.add('solved'); // Adiciona uma classe para estilos de vitória (opcional)
+        messageDisplay.style.color = '#27ae60';
+        puzzleContainer.classList.add('solved');
         // Desabilitar o arrastar e soltar após a vitória
         document.querySelectorAll('.puzzle-piece').forEach(piece => {
             piece.draggable = false;
+            piece.removeEventListener('touchstart', handleTouchStart);
+            piece.removeEventListener('touchmove', handleTouchMove);
+            piece.removeEventListener('touchend', handleTouchEnd);
         });
     } else {
-        messageDisplay.textContent = ''; // Limpa a mensagem se não estiver completo
+        messageDisplay.textContent = '';
         puzzleContainer.classList.remove('solved');
+        // Certifique-se de que as peças são arrastáveis se o jogo não estiver resolvido
+        document.querySelectorAll('.puzzle-piece').forEach(piece => {
+            piece.draggable = true;
+        });
     }
 }
 
