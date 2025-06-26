@@ -196,18 +196,23 @@ canvas.addEventListener('mouseup', (e) => {
 // --- NOVOS EVENTOS DE TOQUE PARA DISPOSITIVOS MÓVEIS ---
 canvas.addEventListener('touchstart', (e) => {
     // Previne o comportamento padrão do navegador (ex: scroll, zoom) ao tocar
-    e.preventDefault();
+    const {x, y} = getCoords(e)
+    const clickedDot = getDotAtPoint(x,y);
+    console.log(clickedDot);
+    if(clickedDot){
+        e.preventDefault();
+        canvas.dispatchEvent(new MouseEvent('mousedown', {
+            clientX: e.touches[0].clientX,
+            clientY: e.touches[0].clientY,
+            bubbles: true,
+            cancelable: true
+        }));
+    }
+    
     // Simula um mousedown usando os dados do toque
-    canvas.dispatchEvent(new MouseEvent('mousedown', {
-        clientX: e.touches[0].clientX,
-        clientY: e.touches[0].clientY,
-        bubbles: true,
-        cancelable: true
-    }));
 }, { passive: false }); // { passive: false } permite que preventDefault() funcione
 
 canvas.addEventListener('touchmove', (e) => {
-    e.preventDefault();
     // Simula um mousemove usando os dados do toque
     canvas.dispatchEvent(new MouseEvent('mousemove', {
         clientX: e.touches[0].clientX,
