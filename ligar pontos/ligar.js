@@ -8,21 +8,16 @@ const CANVAS_HEIGHT = 1024;
 canvas.width = CANVAS_WIDTH;
 canvas.height = CANVAS_HEIGHT;
 
-let dots = []; // Agora, este array será preenchido com seus pontos definidos
+let dots = [];
 let connectedDots = [];
 let currentDotIndex = 1; // Próximo ponto esperado para conexão
 let isDrawing = false;
 let lastPoint = null;
 
+// Objeto Image para o fundo (mantenha como está)
 const backgroundImage = new Image();
-// Defina o caminho para a sua imagem
 backgroundImage.src = 'gato.jpg'; // Altere para o nome e caminho do seu arquivo de imagem
-
-// Opcional: Garanta que a imagem esteja carregada antes de tentar desenhar
-// Isso evita que ela não apareça se o JS tentar desenhar antes do carregamento.
 backgroundImage.onload = () => {
-    // Se quiser reiniciar o jogo ou desenhar assim que a imagem carregar
-    // (útil se a imagem for grande e demorar a carregar)
     drawLines();
 };
 
@@ -68,14 +63,11 @@ function defineCustomDots() {
     dots.sort((a, b) => a.number - b.number);
 }
 
-// --- FIM DA MODIFICAÇÃO ---
-
-
-// Função para desenhar um ponto
+// Função para desenhar um ponto (mantenha como está)
 function drawDot(dot) {
     ctx.beginPath();
-    ctx.arc(dot.x, dot.y, 10, 0, Math.PI * 2);
-    ctx.fillStyle = connectedDots.includes(dot) ? '#000000' : '#000000'; // Cor muda se conectado
+    ctx.arc(dot.x, dot.y, 10, 0, Math.PI * 2); // Raio do ponto (ajuste se precisar)
+    ctx.fillStyle = connectedDots.includes(dot) ? '#000000' : '#000000';
     ctx.fill();
     ctx.strokeStyle = '#333';
     ctx.lineWidth = 2;
@@ -88,15 +80,14 @@ function drawDot(dot) {
     ctx.fillText(dot.number, dot.x, dot.y);
 }
 
-// Função para desenhar todas as linhas conectadas
+// Função para desenhar todas as linhas conectadas (mantenha como está)
 function drawLines() {
-    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT); // Limpa o canvas
+    ctx.clearRect(0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
 
     if (backgroundImage.complete && backgroundImage.naturalWidth !== 0) {
         ctx.drawImage(backgroundImage, 0, 0, CANVAS_WIDTH, CANVAS_HEIGHT);
     }
 
-    // Desenha as linhas já conectadas
     if (connectedDots.length > 1) {
         ctx.strokeStyle = '#000000'; // Cor da linha
         ctx.lineWidth = 3;
@@ -107,28 +98,43 @@ function drawLines() {
         }
         ctx.stroke();
     }
-
-    // Desenha todos os pontos
     dots.forEach(drawDot);
 }
 
-// Função para verificar se um clique está perto de um ponto
+// Função para verificar se um clique/toque está perto de um ponto (mantenha como está)
 function getDotAtPoint(x, y) {
     for (const dot of dots) {
         const distance = Math.sqrt(Math.pow(x - dot.x, 2) + Math.pow(y - dot.y, 2));
-        if (distance < 20) { // Raio de 20px para detectar o clique
+        if (distance < 20) {
             return dot;
         }
     }
     return null;
 }
 
-// Evento de início do desenho
-canvas.addEventListener('mousedown', (e) => {
+// --- FUNÇÕES AUXILIARES PARA NORMALIZAR COORDENADAS ---
+function getCoords(e) {
     const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
+    let clientX, clientY;
 
+    // Verifica se é um evento de toque ou mouse
+    if (e.touches && e.touches.length > 0) {
+        clientX = e.touches[0].clientX;
+        clientY = e.touches[0].clientY;
+    } else {
+        clientX = e.clientX;
+        clientY = e.clientY;
+    }
+
+    const x = clientX - rect.left;
+    const y = clientY - rect.top;
+    return { x, y };
+}
+
+
+// --- EVENTOS DO MOUSE (Mantenha como estão, mas serão "espelhados" pelos toques) ---
+canvas.addEventListener('mousedown', (e) => {
+    const { x, y } = getCoords(e);
     const clickedDot = getDotAtPoint(x, y);
 
     if (clickedDot && clickedDot.number === currentDotIndex) {
@@ -136,38 +142,29 @@ canvas.addEventListener('mousedown', (e) => {
         lastPoint = { x: clickedDot.x, y: clickedDot.y };
         connectedDots.push(clickedDot);
         messageDisplay.textContent = '';
-        drawLines(); // Redesenha para mostrar o ponto inicial conectado
+        drawLines();
     } else if (clickedDot) {
         messageDisplay.textContent = `Atenção: Conecte o ponto ${currentDotIndex} primeiro!`;
     }
 });
 
-// Evento de movimento do mouse (para desenhar a linha)
 canvas.addEventListener('mousemove', (e) => {
     if (!isDrawing) return;
-
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
-    drawLines(); // Limpa e redesenha as linhas e pontos existentes
+    const { x, y } = getCoords(e);
+    drawLines();
     ctx.beginPath();
     ctx.moveTo(lastPoint.x, lastPoint.y);
     ctx.lineTo(x, y);
-    ctx.strokeStyle = '#0056b3';
+    ctx.strokeStyle = '#000000';
     ctx.lineWidth = 3;
     ctx.stroke();
 });
 
-// Evento de fim do desenho
 canvas.addEventListener('mouseup', (e) => {
     if (!isDrawing) return;
     isDrawing = false;
 
-    const rect = canvas.getBoundingClientRect();
-    const x = e.clientX - rect.left;
-    const y = e.clientY - rect.top;
-
+    const { x, y } = getCoords(e);
     const droppedOnDot = getDotAtPoint(x, y);
 
     if (droppedOnDot && droppedOnDot.number === currentDotIndex + 1) {
@@ -175,36 +172,67 @@ canvas.addEventListener('mouseup', (e) => {
         currentDotIndex++;
         messageDisplay.textContent = '';
         drawLines();
+
+        if (currentDotIndex > dots.length) {
+            messageDisplay.textContent = 'Parabéns! Você conectou todos os pontos!';
+        }
     } else {
         messageDisplay.textContent = `Ponto incorreto! Tente conectar o ponto ${currentDotIndex + 1}.`;
+        // Se `connectedDots` tem pelo menos o ponto inicial (currentDotIndex) e o último adicionado é incorreto,
+        // remova o último para que o jogador possa tentar novamente do ponto correto.
+        if (connectedDots.length > 0 && connectedDots[connectedDots.length - 1].number !== (currentDotIndex - 1)) {
+            connectedDots.pop();
+        }
         drawLines();
-        // Se a conexão foi incorreta, precisamos remover o último ponto adicionado
-        // para que o jogador tente novamente do ponto anterior correto.
-        // No entanto, se o jogador clicou no ponto errado após ter soltado o mouse,
-        // o `connectedDots` só terá o último ponto correto.
-        // A lógica abaixo garante que só removemos se o último ponto adicionado foi o ponto inicial
-        // de uma tentativa falha, ou se a linha em si foi feita para um ponto errado.
-        // Para simplificar e evitar que o jogador "perca" um ponto já conectado corretamente:
-        // Apenas limpa a linha de arrasto e não adiciona o ponto errado.
-        // Se `connectedDots` já contém o `currentDotIndex` certo, não precisamos remover.
-        // A remoção seria mais complexa para gerenciar desfazeres.
-        // O importante é que `currentDotIndex` não avança e a mensagem informa o erro.
-        // Se você quiser que a linha desenhada desapareça completamente, `drawLines()` já faz isso.
-    }
-    if (droppedOnDot && dots.length === currentDotIndex){
-        messageDisplay.textContent = 'Parabéns! Você conectou todos os pontos!';
     }
 });
 
-// Evento para reiniciar o jogo
+
+// --- NOVOS EVENTOS DE TOQUE PARA DISPOSITIVOS MÓVEIS ---
+canvas.addEventListener('touchstart', (e) => {
+    // Previne o comportamento padrão do navegador (ex: scroll, zoom) ao tocar
+    e.preventDefault();
+    // Simula um mousedown usando os dados do toque
+    canvas.dispatchEvent(new MouseEvent('mousedown', {
+        clientX: e.touches[0].clientX,
+        clientY: e.touches[0].clientY,
+        bubbles: true,
+        cancelable: true
+    }));
+}, { passive: false }); // { passive: false } permite que preventDefault() funcione
+
+canvas.addEventListener('touchmove', (e) => {
+    e.preventDefault();
+    // Simula um mousemove usando os dados do toque
+    canvas.dispatchEvent(new MouseEvent('mousemove', {
+        clientX: e.touches[0].clientX,
+        clientY: e.touches[0].clientY,
+        bubbles: true,
+        cancelable: true
+    }));
+}, { passive: false });
+
+canvas.addEventListener('touchend', (e) => {
+    e.preventDefault();
+    // Simula um mouseup usando os dados do toque
+    // Importante: toques[0] não existe no touchend, usamos changedTouches[0]
+    canvas.dispatchEvent(new MouseEvent('mouseup', {
+        clientX: e.changedTouches[0].clientX,
+        clientY: e.changedTouches[0].clientY,
+        bubbles: true,
+        cancelable: true
+    }));
+}, { passive: false });
+
+
+// Evento para reiniciar o jogo (mantenha como está)
 resetButton.addEventListener('click', startGame);
 
 function startGame() {
     messageDisplay.textContent = '';
     connectedDots = [];
     currentDotIndex = 1;
-    // --- MUDANÇA AQUI: Chamamos a nova função defineCustomDots() ---
-    defineCustomDots();
+    defineCustomDots(); // Chama a função para definir seus pontos
     drawLines();
 }
 
