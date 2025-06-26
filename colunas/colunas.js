@@ -164,7 +164,9 @@ function resetSelections() {
 // Event listener para o botão de reiniciar
 resetButton.addEventListener('click', startGame);
 
-continueButton.addEventListener('click', );
+continueButton.addEventListener('click', () => {
+    window.location.href = "./charada.html"
+});
 
 // Inicia o jogo quando a página carrega
 startGame();
