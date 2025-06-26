@@ -127,7 +127,7 @@ h1 {
     font-weight: bold;
 }
 
-#reset-button {
+#reset-button, #continue-button {
     padding: 10px 20px;
     font-size: 1em;
     background-color: #dc3545; /* Cor vermelha para o botão de reset */
@@ -140,4 +140,9 @@ h1 {
 
 #reset-button:hover {
     background-color: #c82333;
+}
+
+#continue-button:disabled {
+    opacity: 0.7;
+    transition: none;
 }

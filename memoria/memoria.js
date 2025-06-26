@@ -1,6 +1,7 @@
 const gameContainer = document.querySelector('.game-container');
 const attemptsCountSpan = document.getElementById('attempts-count');
 const resetButton = document.getElementById('reset-button');
+const continueButton = document.getElementById("continue-button");
 
 // Nomes dos arquivos das suas 10 imagens (sem o caminho, apenas o nome do arquivo)
 const imageNames = [
@@ -101,7 +102,8 @@ function disableCards() {
 
     matchesFound++;
     if (matchesFound === imageNames.length) { // imageNames.length é o número total de pares
-        setTimeout(() => alert(`Parabéns! Você encontrou todos os ${imageNames.length} pares em ${attempts} tentativas!`), 500);
+        setTimeout(() => alert(`Parabéns! Você encontrou todos os pares!`), 500);
+        continueButton.disabled = false;
     }
 
     resetBoard();
@@ -125,6 +127,10 @@ function resetBoard() {
 
 // Event listener para o botão de reiniciar
 resetButton.addEventListener('click', createCards);
+
+continueButton.addEventListener('click', () => {
+    window.location.href = "./charada.html"
+});
 
 // Inicia o jogo quando a página carrega
 createCards();

@@ -1,6 +1,8 @@
 const puzzleContainer = document.querySelector('.puzzle-container');
 const resetButton = document.getElementById('reset-button');
 const messageDisplay = document.getElementById('message');
+const continueButton = document.getElementById("continue-button");
+
 
 // --- Configurações do Quebra-Cabeça ---
 const IMAGE_URL = './quebracabeca.jpeg'; // **Mude para o caminho da sua imagem**
@@ -315,6 +317,7 @@ function checkWin() {
 
     if (correctCount === ROWS * COLS) {
         messageDisplay.textContent = 'Quebra-cabeça Montado! Parabéns!';
+        continueButton.disabled = false;
         messageDisplay.style.color = '#27ae60';
         puzzleContainer.classList.add('solved');
         // Desabilitar o arrastar e soltar após a vitória
@@ -337,6 +340,10 @@ function checkWin() {
 // --- Event Listeners e Inicialização ---
 
 resetButton.addEventListener('click', createPuzzle);
+
+continueButton.addEventListener('click', () => {
+    window.location.href = "./charada.html"
+});
 
 // Inicia o jogo quando a página carrega
 createPuzzle();

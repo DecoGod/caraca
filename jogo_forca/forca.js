@@ -12,7 +12,7 @@ window.onload = function () {
   var geusses = [ ];      // Stored geusses
   var lives ;             // Lives
   var counter ;           // Count correct geusses
-  var space;              // Number of spaces in word '-'
+  var space = 0;              // Number of spaces in word '-'
   var word_selected;
 
   // Get elements
@@ -21,7 +21,8 @@ window.onload = function () {
   var getHint = document.getElementById("hint");
   var showClue = document.getElementById("clue");
 
-
+  const continueButton = document.getElementById("continue-button");
+  
 
   // create alphabet ul
   var buttons = function () {
@@ -55,7 +56,7 @@ window.onload = function () {
       guess.setAttribute('class', 'guess');
       if (word[i] === "-") {
         guess.innerHTML = "-";
-        space = 1;
+        space += 1;
       } else {
         guess.innerHTML = "_";
       }
@@ -72,10 +73,10 @@ window.onload = function () {
     if (lives < 1) {
       showLives.innerHTML = "Game Over";
     }
-    for (var i = 0; i < geusses.length; i++) {
-      if (counter + space === geusses.length) {
-        showLives.innerHTML = "Você venceu!";
-      }
+    console.log(counter, space, geusses.length);
+    if (counter + space === geusses.length) {
+      showLives.innerHTML = "Voce venceu!";
+      continueButton.disabled = false;
     }
   }
 
@@ -221,6 +222,9 @@ window.onload = function () {
     context.clearRect(0, 0, 400, 400);
     play();
   }
+  
+  continueButton.addEventListener('click', () => {
+      window.location.href = "./charada.html"
+  });
 }
-
 

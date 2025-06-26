@@ -68,7 +68,7 @@ h1 {
     gap: 15px;
 }
 
-#reset-button {
+#reset-button, #continue-button {
     padding: 12px 25px;
     font-size: 1.1em;
     background-color: #3498db;
@@ -78,6 +78,12 @@ h1 {
     cursor: pointer;
     transition: background-color 0.3s ease;
 }
+
+#continue-button:disabled {
+    opacity: 0.7;
+    transition: none;
+}
+
 
 #reset-button:hover {
     background-color: #2980b9;

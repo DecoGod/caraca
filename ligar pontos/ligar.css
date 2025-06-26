@@ -51,7 +51,7 @@ canvas {
     margin-top: 10px;
 }
 
-#resetButton {
+#resetButton, #continue-button {
     padding: 10px 20px;
     font-size: 1em;
     background-color: #007bff;
@@ -60,6 +60,11 @@ canvas {
     border-radius: 5px;
     cursor: pointer;
     transition: background-color 0.3s ease;
+}
+
+#continue-button:disabled {
+    opacity: 0.7;
+    transition: none;
 }
 
 #resetButton:hover {

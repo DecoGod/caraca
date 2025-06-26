@@ -2,6 +2,7 @@ const canvas = document.getElementById('gameCanvas');
 const ctx = canvas.getContext('2d');
 const messageDisplay = document.getElementById('message');
 const resetButton = document.getElementById('resetButton');
+const continueButton = document.getElementById("continue-button");
 
 const CANVAS_WIDTH = 761;
 const CANVAS_HEIGHT = 1024;
@@ -167,14 +168,18 @@ canvas.addEventListener('mouseup', (e) => {
     const { x, y } = getCoords(e);
     const droppedOnDot = getDotAtPoint(x, y);
 
-    if (droppedOnDot && droppedOnDot.number === currentDotIndex + 1) {
+    if (currentDotIndex >= dots.length) {
+        messageDisplay.textContent = 'Parabéns! Você conectou todos os pontos!';
+        continueButton.disabled = false;
+    } else if (droppedOnDot && droppedOnDot.number === currentDotIndex + 1) {
         connectedDots.push(droppedOnDot);
         currentDotIndex++;
         messageDisplay.textContent = '';
         drawLines();
 
-        if (currentDotIndex > dots.length) {
+        if (currentDotIndex >= dots.length) {
             messageDisplay.textContent = 'Parabéns! Você conectou todos os pontos!';
+            continueButton.disabled = false;
         }
     } else {
         messageDisplay.textContent = `Ponto incorreto! Tente conectar o ponto ${currentDotIndex + 1}.`;
@@ -236,5 +241,8 @@ function startGame() {
     drawLines();
 }
 
+continueButton.addEventListener('click', () => {
+    window.location.href = "./charada.html"
+});
 // Inicia o jogo quando a página carrega
 startGame();

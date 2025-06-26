@@ -115,8 +115,9 @@ h1 {
     transition: background-color 0.3s ease;
 }
 
-#continue-button:disabled{
-    opacity: 0.6;
+#continue-button:disabled {
+    opacity: 0.7;
+    transition: none;
 }
 
 #reset-button:hover {
